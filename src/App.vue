@@ -44,14 +44,14 @@
             </div>
             <template v-if="ticker.length > 0">
             <div      
-              v-for="symbol in symbolsFilteres"
+              v-for="symbol in coinsListFiltered"
               :key = "symbol.id"
               class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
             >
               <span
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                {{symbol.Symbol}}
+                {{symbol}}
               </span>              
             </div>
             </template>
@@ -172,7 +172,7 @@ export default {
 
       graph: [],
 
-      symbols: [],
+      coinsList: [],
     }
   },
 
@@ -182,12 +182,15 @@ export default {
 
     let f = await fetch(url)
       .then(response => response.json())
-      .then(data => this.symbols = data.Data);
+      .then(data => this.coinsList = Object.keys(data.Data));
   },
 
   computed: {
-    symbolsFilteres() {
-      return this.symbols;
+    coinsListFiltered() {
+      const arr = this.coinsList.filter(
+        item => !item.indexOf(this.ticker.toUpperCase())
+      );
+      return arr.slice(0, 4);
     }
   },
 
