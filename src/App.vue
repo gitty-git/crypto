@@ -42,30 +42,19 @@
                 placeholder="Например DOGE"
               />
             </div>
-            <div
+            <template v-if="ticker.length > 0">
+            <div      
+              v-for="symbol in symbolsFilteres"
+              :key = "symbol.id"
               class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
             >
               <span
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                BTC
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                DOGE
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                BCH
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                CHD
-              </span>
+                {{symbol.Symbol}}
+              </span>              
             </div>
+            </template>
             <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
           </div>
         </div>
@@ -182,6 +171,23 @@ export default {
       sel: null,
 
       graph: [],
+
+      symbols: [],
+    }
+  },
+
+  async created() {
+    let url = "https://min-api.cryptocompare.com/data/all/coinlist?summary=true";
+    // this.sendRequest('GET', url).then(data => console.log(data));
+
+    let f = await fetch(url)
+      .then(response => response.json())
+      .then(data => this.symbols = data.Data);
+  },
+
+  computed: {
+    symbolsFilteres() {
+      return this.symbols;
     }
   },
 
