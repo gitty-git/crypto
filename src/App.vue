@@ -43,19 +43,21 @@
               />
             </div>
             <template v-if="ticker.length > 0">
-            <div      
-              v-for="symbol in coinsListFiltered"
-              :key = "symbol.id"
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
+            <div
+              v-if="coinsListFiltered.length > 0"
+              class="flex bg-white shadow-md p-1 rounded-md flex-wrap"
             >
               <span
+                @click="ticker = symbol; add()" 
+                v-for="symbol in coinsListFiltered"
+                :key = "symbol.id"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
                 {{symbol}}
               </span>              
             </div>
             </template>
-            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div v-if="error" class="text-sm text-red-600">Такой тикер уже добавлен</div>
           </div>
         </div>
         <button          
@@ -173,14 +175,15 @@ export default {
       graph: [],
 
       coinsList: [],
+
+      error: false,
     }
   },
 
   async created() {
     let url = "https://min-api.cryptocompare.com/data/all/coinlist?summary=true";
-    // this.sendRequest('GET', url).then(data => console.log(data));
 
-    let f = await fetch(url)
+    await fetch(url)
       .then(response => response.json())
       .then(data => this.coinsList = Object.keys(data.Data));
   },
@@ -190,12 +193,20 @@ export default {
       const arr = this.coinsList.filter(
         item => !item.indexOf(this.ticker.toUpperCase())
       );
+      
       return arr.slice(0, 4);
     }
   },
 
   methods: {
     add() {
+      let con = this.tickers.find(t => t.name === this.ticker);
+
+      if (con) {
+        this.error = true;
+        return;
+      }
+
       const currentTicker = {
         name: this.ticker,
         price: "-",
