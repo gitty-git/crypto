@@ -85,14 +85,14 @@
 
       <div class="max-w-xs">
         <label for="ticker" class="block text-sm font-medium text-gray-700">Filter:</label>
-          <input name="ticker" v-model="filter" type="text" class="mt-1 rounded-md shadow-md block pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md">
+          <input name="ticker" v-model="filter" @input="page = 1" type="text" class="mt-1 rounded-md shadow-md block pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md">
       </div>
 
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-300 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="ticker in filteredTickers"
+            v-for="ticker in paginatedTickers"
             :key="ticker.name"
             @click="select(ticker)"
             :class="{'border-4': sel === ticker}"
@@ -139,7 +139,7 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div 
-            v-for="(bar, id) in normalizeGraph()"
+            v-for="(bar, id) in normalizedGraph"
             :key="id"
             :style="{ height: `${bar}%` }"
             class="bg-purple-800 border w-10"></div>
@@ -192,7 +192,6 @@ export default {
 
       filter: "",
       page: 1,
-      hasNextPage: true,
     }
   },
 
@@ -227,18 +226,43 @@ export default {
       const arr = this.coinsList.filter(
         item => !item.indexOf(this.ticker.toUpperCase())
       );
-
       return arr.slice(0, 4);
     },
 
+    startIndex() {
+      return (this.page - 1) * 6;
+    },
+
+    endIndex() {
+      return this.page * 6;
+    },
+
     filteredTickers() {
-      let start = (this.page - 1) * 6;
-      let end = this.page * 6;
-      let filteredTickers = this.tickers.filter(ticker => 
-        ticker.name.includes(this.filter.toUpperCase()));
-      this.hasNextPage = filteredTickers.length > end;
-      return filteredTickers.slice(start, end);
-    }
+      return this.tickers.filter(ticker => 
+        ticker.name.includes(this.filter.toUpperCase())
+      );      
+    },
+
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex);
+    },
+
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+
+    normalizedGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+
+      if (maxValue === minValue) {
+        return this.graph.map(() => 50);
+      }
+
+      return this.graph.map(
+        price => ((price - minValue) * 100) / (maxValue - minValue)
+      );
+    },
   },
 
   methods: {
@@ -267,16 +291,16 @@ export default {
       setInterval(async () => {
         const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=50f1967255f4cdb33a0366a10a08ae066a129cce06e235f69f3d2ed3c2e9cd6b`);
         const data = await f.json();
-        this.tickers.find(t => t.name === tickerName).price = 
-          data.USD > 1 
-          ? data.USD.toFixed(2) 
-          : data.USD.toPrecision(2);
 
-          if (this.sel?.name === tickerName) {
-            this.graph.push(data.USD);
-          }
-      }, 5000)
+        this.tickers.find(t => t.name === tickerName).price =
+          data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+        if (this.selectedTicker?.name === tickerName) {
+          this.graph.push(data.USD);
+        }
+      }, 10000);
       this.ticker = "";
+
     },
 
     select(ticker) {
@@ -286,21 +310,18 @@ export default {
 
     remove(ticker) {
       this.tickers = this.tickers.filter(t => t !== ticker);
-    },
-
-    normalizeGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map(
-        price => ((price - minValue) * 100) / (maxValue - minValue)
-      );
-    },
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+    },    
   },
 
   watch: {
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page--;
+      }
+    },
+
     filter() {
-      this.page = 1;
-      // let {protocol, host, pathname} = window.location;
       window.history.pushState(
         null, 
         document.title, 
