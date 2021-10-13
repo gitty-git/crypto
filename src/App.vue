@@ -95,7 +95,7 @@
             v-for="ticker in paginatedTickers"
             :key="ticker.name"
             @click="select(ticker)"
-            :class="{'border-4': sel === ticker}"
+            :class="{'border-4': selectedTicker === ticker}"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -133,9 +133,9 @@
       </div>    
       </template>
 
-      <section v-if="sel" class="relative">
+      <section v-if="selectedTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ sel.name }} - USD
+          {{ selectedTicker.name }} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div 
@@ -144,7 +144,7 @@
             :style="{ height: `${bar}%` }"
             class="bg-purple-800 border w-10"></div>
         </div>
-        <button @click="sel = null" type="button" class="absolute top-0 right-0">
+        <button @click="selectedTicker = null" type="button" class="absolute top-0 right-0">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -182,7 +182,7 @@ export default {
       ticker: "",
       tickers: [],
 
-      sel: null,
+      selectedTicker: null,
 
       graph: [],
 
@@ -218,10 +218,18 @@ export default {
 
     await fetch(url)
       .then(response => response.json())
-      .then(data => this.coinsList = Object.keys(data.Data));
+      .then(data => this.coinsList = Object.keys(data.Data))
+      .catch(error => console.log(error));
   },
 
   computed: {
+    pageStateOptions() {
+      return {
+        filter: this.filter,
+        page: this.page,
+      }
+    },
+
     coinsListFiltered() {
       const arr = this.coinsList.filter(
         item => !item.indexOf(this.ticker.toUpperCase())
@@ -279,10 +287,9 @@ export default {
         price: "-",
       };
 
-      this.tickers.push(currentTicker);
+      this.tickers = [...this.tickers, currentTicker];
       this.filter = "";
 
-      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
       this.subscibeToUpdates(currentTicker.name);
       this.error = false;
     },
@@ -304,35 +311,37 @@ export default {
     },
 
     select(ticker) {
-      this.sel = ticker;
-      this.graph = [];
+      this.selectedTicker = ticker;
     },
 
     remove(ticker) {
       this.tickers = this.tickers.filter(t => t !== ticker);
-      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+      if (this.selectedTicker === ticker) {
+        this.selectedTicker = null;
+      }
     },    
   },
 
   watch: {
+    tickers() {
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+    },
+
+    selectedTicker() {
+      this.graph = [];
+    },
+
     paginatedTickers() {
       if (this.paginatedTickers.length === 0 && this.page > 1) {
         this.page--;
       }
     },
 
-    filter() {
+    pageStateOptions(value) {
       window.history.pushState(
         null, 
         document.title, 
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
-    },
-
-    page() {
-      window.history.pushState(
-        null, 
-        document.title, 
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`);
     }
   }
 }
