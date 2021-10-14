@@ -45,12 +45,12 @@
             </div>
             <template v-if="ticker.length > 0">
             <div
-              v-if="coinsListFiltered.length > 0"
+              v-if="coinsListFilered.length > 0"
               class="flex bg-white shadow-md p-1 rounded-md flex-wrap"
             >
               <span
                 @click="ticker = symbol; add()"                 
-                v-for="symbol in coinsListFiltered"
+                v-for="symbol in coinsListFilered"
                 :key = "symbol.id"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
@@ -102,7 +102,7 @@
               <dt class="text-sm font-medium text-gray-500 truncate">
                 {{ ticker.name }} - USD
               </dt>
-              <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ ticker.price }}</dd>
+              <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ formatPrice(ticker.price) }}</dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
             <button
@@ -173,6 +173,7 @@
 </template>
 
 <script>
+import { loadTicker } from "./api"
 
 export default {
   name: 'App',
@@ -186,7 +187,7 @@ export default {
 
       graph: [],
 
-      coinsList: [],
+      coinList: [],
 
       error: false,
 
@@ -208,17 +209,16 @@ export default {
 
     let tickersData = localStorage.getItem("cryptonomicon-list");
     if (tickersData) {
-      this.tickers = JSON.parse(tickersData);
-      this.tickers.forEach(ticker => {
-        this.subscibeToUpdates(ticker.name);
-      });
+      this.tickers = JSON.parse(tickersData);    
     }
+
+    setInterval(this.updateTickers, 5000)
     
     let url = "https://min-api.cryptocompare.com/data/all/coinlist?summary=true";
 
     await fetch(url)
       .then(response => response.json())
-      .then(data => this.coinsList = Object.keys(data.Data))
+      .then(data => this.coinList = Object.keys(data.Data))
       .catch(error => console.log(error));
   },
 
@@ -230,8 +230,8 @@ export default {
       }
     },
 
-    coinsListFiltered() {
-      const arr = this.coinsList.filter(
+    coinsListFilered() {
+      const arr = this.coinList.filter(
         item => !item.indexOf(this.ticker.toUpperCase())
       );
       return arr.slice(0, 4);
@@ -275,39 +275,45 @@ export default {
 
   methods: {
     add() {
-      let con = this.tickers.find(t => t.name === this.ticker);
+      let isInTickerList = this.tickers.find(t => t.name === this.ticker.toUpperCase());
+      let isInCoinList = this.coinList.includes(this.ticker.toUpperCase())
 
-      if (con) {
+      console.log(isInTickerList)
+
+      if (isInTickerList) {
         this.error = true;
         return;
       }
 
       const currentTicker = {
-        name: this.ticker,
+        name: this.ticker.toUpperCase(),
         price: "-",
       };
 
       this.tickers = [...this.tickers, currentTicker];
+      
       this.filter = "";
-
-      this.subscibeToUpdates(currentTicker.name);
       this.error = false;
     },
 
-    subscibeToUpdates(tickerName) {
-      setInterval(async () => {
-        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=50f1967255f4cdb33a0366a10a08ae066a129cce06e235f69f3d2ed3c2e9cd6b`);
-        const data = await f.json();
+    formatPrice(price) {
+      if (price === "-") {
+        return price
+      }
+      return price > 1 ? price.toFixed(2) : price.toPrecision(2)
+    },
 
-        this.tickers.find(t => t.name === tickerName).price =
-          data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+    async updateTickers() {
+      if (!this.tickers.length) {
+        return
+      }
 
-        if (this.selectedTicker?.name === tickerName) {
-          this.graph.push(data.USD);
-        }
-      }, 10000);
-      this.ticker = "";
+      const exchangeData = await loadTicker(this.tickers.map(t => t.name))
 
+      this.tickers.forEach(ticker => {
+        const price = exchangeData[ticker.name.toUpperCase()]
+        ticker.price = price ?? "-"
+      })
     },
 
     select(ticker) {
