@@ -58,7 +58,7 @@
               </span>              
             </div>
             </template>
-            <div v-if="error" class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div v-if="error.length > 0" class="text-sm mt-2 text-red-600">{{ error }}</div>
           </div>
         </div>
         <button          
@@ -189,7 +189,7 @@ export default {
 
       coinList: [],
 
-      error: false,
+      error: "",
 
       filter: "",
       page: 1,
@@ -232,7 +232,7 @@ export default {
 
     coinsListFilered() {
       const arr = this.coinList.filter(
-        item => !item.indexOf(this.ticker.toUpperCase())
+        item => !item.indexOf(this.ticker)
       );
       return arr.slice(0, 4);
     },
@@ -275,25 +275,29 @@ export default {
 
   methods: {
     add() {
-      let isInTickerList = this.tickers.find(t => t.name === this.ticker.toUpperCase());
-      let isInCoinList = this.coinList.includes(this.ticker.toUpperCase())
+      let isInTickerList = this.tickers.some(t => t.name === this.ticker);
+      let isInCoinList = this.coinList.includes(this.ticker)
 
-      console.log(isInTickerList)
+      if (!isInCoinList) {
+        this.error = "There is no such symbol"
+        return
+      }
 
       if (isInTickerList) {
-        this.error = true;
-        return;
+        this.error = "The ticker is already in the tickers list"
+        return
       }
 
       const currentTicker = {
-        name: this.ticker.toUpperCase(),
+        name: this.ticker,
         price: "-",
-      };
+      }
 
-      this.tickers = [...this.tickers, currentTicker];
+      this.tickers = [...this.tickers, currentTicker]
       
-      this.filter = "";
-      this.error = false;
+      this.ticker = ""
+      this.filter = ""
+      this.error = false
     },
 
     formatPrice(price) {
@@ -329,6 +333,10 @@ export default {
   },
 
   watch: {
+    ticker() {
+      this.ticker = this.ticker.toUpperCase()
+    },
+
     tickers() {
       localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
     },
